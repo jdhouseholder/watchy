@@ -5,6 +5,7 @@ edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/jdhouseholder/watchy"
 categories = ["command-line-utilities"]
+description = "Watch a set of files for changes and run a command on change."
 
 [dependencies]
 chrono = "0.4.39"
