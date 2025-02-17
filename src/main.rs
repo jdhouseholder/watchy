@@ -40,13 +40,10 @@ fn main() {
 
     args.watch.dedup();
 
+    let flags = AddWatchFlags::IN_MODIFY | AddWatchFlags::IN_ONESHOT;
+
     for p in args.watch {
-        let wd = inotify
-            .add_watch(
-                p.as_str(),
-                AddWatchFlags::IN_MODIFY | AddWatchFlags::IN_ONESHOT,
-            )
-            .unwrap();
+        let wd = inotify.add_watch(p.as_str(), flags).unwrap();
 
         wd_to_file_ref.insert(
             wd,
@@ -64,12 +61,7 @@ fn main() {
         for event in events {
             let FileRef { path, hash } = wd_to_file_ref.remove(&event.wd).unwrap();
 
-            let wd = inotify
-                .add_watch(
-                    path.as_str(),
-                    AddWatchFlags::IN_MODIFY | AddWatchFlags::IN_ONESHOT,
-                )
-                .unwrap();
+            let wd = inotify.add_watch(path.as_str(), flags).unwrap();
 
             let new_hash = hash_file(&path);
             if hash != new_hash {
