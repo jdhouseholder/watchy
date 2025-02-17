@@ -13,34 +13,34 @@ struct FileRef {
     hash: [u8; 32],
 }
 
-fn hash_file(p: &str) -> Result<[u8; 32], Box<dyn Error>> {
+fn hash_file(path: &str) -> Result<[u8; 32], Box<dyn Error>> {
     let mut hasher = Sha256::new();
-    let b = read(&p).map_err(|e| format!("error reading {}: {:?}", p, e))?;
+    let b = read(&path).map_err(|e| format!("error reading {}: {:?}", path, e))?;
     hasher.update(b);
     let hash = hasher.finalize();
     Ok(hash.try_into().unwrap())
 }
 
-pub fn watch(files: &[String], then: String) -> Result<(), Box<dyn Error>> {
-    let mut wd_to_file_ref = HashMap::new();
+pub fn watch(paths: &[String], then: String) -> Result<(), Box<dyn Error>> {
+    let mut watch_descriptor_to_file_ref = HashMap::new();
 
     let inotify = Inotify::init(InitFlags::empty()).unwrap();
 
     let flags = AddWatchFlags::IN_MODIFY | AddWatchFlags::IN_ONESHOT;
 
-    for p in files {
-        let wd = inotify.add_watch(p.as_str(), flags).map_err(|e| {
+    for path in paths {
+        let watch_descriptor = inotify.add_watch(path.as_str(), flags).map_err(|e| {
             format!(
                 "Unable to watch {:?}, does the file exist? error={:?}",
-                p, e
+                path, e
             )
         })?;
 
-        wd_to_file_ref.insert(
-            wd,
+        watch_descriptor_to_file_ref.insert(
+            watch_descriptor,
             FileRef {
-                path: p.to_string(),
-                hash: hash_file(&p)?,
+                path: path.to_string(),
+                hash: hash_file(&path)?,
             },
         );
     }
@@ -50,9 +50,9 @@ pub fn watch(files: &[String], then: String) -> Result<(), Box<dyn Error>> {
 
         let mut paths = Vec::new();
         for event in events {
-            let FileRef { path, hash } = wd_to_file_ref.remove(&event.wd).unwrap();
+            let FileRef { path, hash } = watch_descriptor_to_file_ref.remove(&event.wd).unwrap();
 
-            let wd = inotify.add_watch(path.as_str(), flags).map_err(|e| {
+            let watch_descriptor = inotify.add_watch(path.as_str(), flags).map_err(|e| {
                 format!(
                     "Unable to watch {:?}, does the file exist? error={:?}",
                     path, e
@@ -64,8 +64,8 @@ pub fn watch(files: &[String], then: String) -> Result<(), Box<dyn Error>> {
                 paths.push(path.to_string());
             }
 
-            wd_to_file_ref.insert(
-                wd,
+            watch_descriptor_to_file_ref.insert(
+                watch_descriptor,
                 FileRef {
                     path,
                     hash: new_hash,
@@ -88,6 +88,7 @@ pub fn watch(files: &[String], then: String) -> Result<(), Box<dyn Error>> {
                 .wait()
                 .unwrap();
         }
+
         if !paths.is_empty() {
             println!("Waiting for changes...");
         }
