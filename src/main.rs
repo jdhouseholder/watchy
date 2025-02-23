@@ -3,6 +3,7 @@ use clap::Parser;
 #[derive(Parser, Debug)]
 #[command(version, about, about = "Watches a set of files and runs a command with the file name passed as an argument on change.", long_about = None)]
 struct Args {
+    #[clap(num_args = 1.., value_delimiter = ' ')]
     #[arg(long)]
     watch: Vec<String>,
 
